@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import base64
 import io
+import os
 import threading
 import time
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -13,7 +15,7 @@ from PIL import Image
 from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
 from qiskit.quantum_info import Statevector
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter, median_filter
 from scipy.optimize import minimize
 
 from app.models.schemas import MseResult, QubitFrame, TileInfo, TimelineEvent
@@ -35,12 +37,12 @@ class JobState:
     timeline_events: list[TimelineEvent] = field(default_factory=list)
     mse_results: list[MseResult] = field(default_factory=list)
     selected_tile: TileInfo | None = None
-    fft_preview_base64: str | None = None
-    sobel_preview_base64: str | None = None
-    gaussian_preview_base64: str | None = None
-    quantum_qft_preview_base64: str | None = None
-    quantum_grover_preview_base64: str | None = None
-    quantum_vqe_preview_base64: str | None = None
+    fft_preview_url: str | None = None
+    sobel_preview_url: str | None = None
+    gaussian_preview_url: str | None = None
+    quantum_qft_preview_url: str | None = None
+    quantum_grover_preview_url: str | None = None
+    quantum_vqe_preview_url: str | None = None
     optimization_trace: list[float] = field(default_factory=list)
     error: str | None = None
 
@@ -50,6 +52,10 @@ class PipelineService:
         self._images: dict[str, UploadedImage] = {}
         self._jobs: dict[str, JobState] = {}
         self._lock = threading.Lock()
+        
+        # Create images directory for storing processed outputs
+        self.images_dir = Path(__file__).parent.parent.parent / "images"
+        self.images_dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def _ensure_gray_and_resize(pil_image: Image.Image, target_size: int = 128) -> np.ndarray:
@@ -82,6 +88,43 @@ class PipelineService:
             pil_img.save(buffer, format="PNG")
             return base64.b64encode(buffer.getvalue()).decode("ascii")
 
+    def _save_image_to_disk(self, array: np.ndarray, job_id: str, image_type: str, preview_size: tuple[int, int] = (512, 512)) -> str:
+        """Save numpy array as PNG image to disk and return the relative URL path."""
+        if array.dtype != np.uint8:
+            clipped = np.clip(array, 0, 255).astype(np.uint8)
+        else:
+            clipped = array
+        
+        pil_img = Image.fromarray(clipped)
+        # Resize to preview size for storage
+        pil_img = pil_img.resize(preview_size, Image.Resampling.LANCZOS)
+        
+        # Create filename
+        filename = f"{job_id}_{image_type}.png"
+        filepath = self.images_dir / filename
+        
+        # Save image with maximum PNG compression (level 9) for lossless compression
+        pil_img.save(filepath, format="PNG", compress_level=9)
+        
+        # Return relative URL path
+        return f"/images/{filename}"
+
+    def _cleanup_old_images(self) -> None:
+        """Delete all images from previous jobs to save disk space."""
+        try:
+            if self.images_dir.exists():
+                for image_file in self.images_dir.glob("*.png"):
+                    image_file.unlink()
+        except Exception:
+            pass  # Silently ignore cleanup errors
+
+    @staticmethod
+    def _denoise_quantum_output(array: np.ndarray) -> np.ndarray:
+        """Apply median filter to reduce noise in quantum outputs."""
+        # Use median filter to smooth out noise while preserving edges
+        denoised = median_filter(array, size=3)
+        return denoised
+
     @staticmethod
     def _extract_initial_tile(image: np.ndarray, tile_size: int = 4) -> TileInfo:
         tile = image[0:tile_size, 0:tile_size].flatten().tolist()
@@ -101,6 +144,8 @@ class PipelineService:
 
     def create_job(self, image_id: str, tile_size: int, target_size: int) -> str:
         job_id = str(uuid.uuid4())
+        # Clean up old images before starting new job
+        self._cleanup_old_images()
         state = JobState(
             job_id=job_id,
             status="queued",
@@ -339,12 +384,12 @@ class PipelineService:
                 MseResult(key="gaussian", label="Gaussian", value=self._mse(img_norm, gaussian), family="classical"),
             ]
 
-            state.quantum_qft_preview_base64 = self._np_to_base64_png_preview(qft_out)
-            state.quantum_grover_preview_base64 = self._np_to_base64_png_preview(grover_out)
-            state.quantum_vqe_preview_base64 = self._np_to_base64_png_preview(vqe_out)
-            state.fft_preview_base64 = self._np_to_base64_png_preview((fft_mag * 255).astype(np.uint8))
-            state.sobel_preview_base64 = self._np_to_base64_png_preview((sobel * 255).astype(np.uint8))
-            state.gaussian_preview_base64 = self._np_to_base64_png_preview((gaussian * 255).astype(np.uint8))
+            state.quantum_qft_preview_url = self._save_image_to_disk(self._denoise_quantum_output(qft_out), job_id, "qft")
+            state.quantum_grover_preview_url = self._save_image_to_disk(self._denoise_quantum_output(grover_out), job_id, "grover")
+            state.quantum_vqe_preview_url = self._save_image_to_disk(self._denoise_quantum_output(vqe_out), job_id, "vqe")
+            state.fft_preview_url = self._save_image_to_disk((fft_mag * 255).astype(np.uint8), job_id, "fft")
+            state.sobel_preview_url = self._save_image_to_disk((sobel * 255).astype(np.uint8), job_id, "sobel")
+            state.gaussian_preview_url = self._save_image_to_disk((gaussian * 255).astype(np.uint8), job_id, "gaussian")
             state.optimization_trace = optimization_trace[-120:]
             state.mse_results = mse_results
             state.progress_quantum = 100

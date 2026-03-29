@@ -3,11 +3,20 @@ venv/
 .venv/
 env/
 ENV/
+*.egg-info/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
 
 # IDE
 .vscode/
@@ -22,3 +31,10 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+
+# Generated images
+backend/images/
+
+# Node modules and build
+quantum-frontend/node_modules/
+quantum-frontend/dist/

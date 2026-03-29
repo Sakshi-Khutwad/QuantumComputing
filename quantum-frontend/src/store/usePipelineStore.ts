@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { getJob, startProcess, toDataUrl, uploadImage } from '../api/client'
+import { getJob, startProcess, toDataUrl, uploadImage, getImageUrl } from '../api/client'
 import type {
   ClassicalAlgorithm,
   MseResult,
@@ -164,12 +164,12 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
             optimizationTrace: job.optimization_trace,
             previews: {
               input: get().previews.input,
-              qft: toDataUrl(job.quantum_qft_preview_base64),
-              grover: toDataUrl(job.quantum_grover_preview_base64),
-              vqe: toDataUrl(job.quantum_vqe_preview_base64),
-              fft: toDataUrl(job.fft_preview_base64),
-              sobel: toDataUrl(job.sobel_preview_base64),
-              gaussian: toDataUrl(job.gaussian_preview_base64),
+              qft: getImageUrl(job.quantum_qft_preview_url),
+              grover: getImageUrl(job.quantum_grover_preview_url),
+              vqe: getImageUrl(job.quantum_vqe_preview_url),
+              fft: getImageUrl(job.fft_preview_url),
+              sobel: getImageUrl(job.sobel_preview_url),
+              gaussian: getImageUrl(job.gaussian_preview_url),
             },
             errorMessage: job.error,
           })

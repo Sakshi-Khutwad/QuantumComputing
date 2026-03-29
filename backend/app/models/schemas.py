@@ -55,12 +55,12 @@ class JobStatusResponse(BaseModel):
     timeline_events: list[TimelineEvent]
     mse_results: list[MseResult]
     selected_tile: TileInfo | None
-    fft_preview_base64: str | None
-    sobel_preview_base64: str | None
-    gaussian_preview_base64: str | None
-    quantum_qft_preview_base64: str | None
-    quantum_grover_preview_base64: str | None
-    quantum_vqe_preview_base64: str | None
+    fft_preview_url: str | None
+    sobel_preview_url: str | None
+    gaussian_preview_url: str | None
+    quantum_qft_preview_url: str | None
+    quantum_grover_preview_url: str | None
+    quantum_vqe_preview_url: str | None
     optimization_trace: list[float]
     error: str | None = None
 

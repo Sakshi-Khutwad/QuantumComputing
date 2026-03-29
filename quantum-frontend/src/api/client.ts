@@ -36,3 +36,13 @@ export function toDataUrl(base64Png: string | null): string | null {
   if (!base64Png) return null
   return `data:image/png;base64,${base64Png}`
 }
+
+export function getImageUrl(imageUrl: string | null): string | null {
+  if (!imageUrl) return null
+  // If it's already a full URL, return as-is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+  // Otherwise, prepend the base URL
+  return `${BASE_URL}${imageUrl}`
+}

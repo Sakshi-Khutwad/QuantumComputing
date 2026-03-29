@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 from app.models.schemas import JobStatusResponse, ProcessRequest, StartJobResponse, UploadResponse
 from app.services.pipeline import pipeline_service
@@ -15,6 +17,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount the images directory for serving static files
+images_dir = Path(__file__).parent.parent / "images"
+images_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/images", StaticFiles(directory=str(images_dir)), name="images")
 
 
 @app.get("/health")
@@ -59,12 +66,12 @@ def get_job(job_id: str) -> JobStatusResponse:
         timeline_events=state.timeline_events,
         mse_results=state.mse_results,
         selected_tile=state.selected_tile,
-        fft_preview_base64=state.fft_preview_base64,
-        sobel_preview_base64=state.sobel_preview_base64,
-        gaussian_preview_base64=state.gaussian_preview_base64,
-        quantum_qft_preview_base64=state.quantum_qft_preview_base64,
-        quantum_grover_preview_base64=state.quantum_grover_preview_base64,
-        quantum_vqe_preview_base64=state.quantum_vqe_preview_base64,
+        fft_preview_url=state.fft_preview_url,
+        sobel_preview_url=state.sobel_preview_url,
+        gaussian_preview_url=state.gaussian_preview_url,
+        quantum_qft_preview_url=state.quantum_qft_preview_url,
+        quantum_grover_preview_url=state.quantum_grover_preview_url,
+        quantum_vqe_preview_url=state.quantum_vqe_preview_url,
         optimization_trace=state.optimization_trace,
         error=state.error,
     )

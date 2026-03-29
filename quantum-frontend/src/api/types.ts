@@ -30,12 +30,12 @@ export interface JobStatusResponse {
   timeline_events: ApiTimelineEvent[]
   mse_results: MseResult[]
   selected_tile: TileInfo | null
-  fft_preview_base64: string | null
-  sobel_preview_base64: string | null
-  gaussian_preview_base64: string | null
-  quantum_qft_preview_base64: string | null
-  quantum_grover_preview_base64: string | null
-  quantum_vqe_preview_base64: string | null
+  fft_preview_url: string | null
+  sobel_preview_url: string | null
+  gaussian_preview_url: string | null
+  quantum_qft_preview_url: string | null
+  quantum_grover_preview_url: string | null
+  quantum_vqe_preview_url: string | null
   optimization_trace: number[]
   error: string | null
 }
